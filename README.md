@@ -1,93 +1,111 @@
-# sankey_visualization
+# Sankey Diagram Visualization for Internship Program Analysis
 
+This project analyzes data from two CSV files regarding Tech Lead interns and Developer interns from various colleges. It aims to identify imbalances based on a defined ratio (e.g., 1 Tech Lead per 20 Developers) and visualizes these relationships and required adjustments using a Sankey diagram.
 
+## Project Goals
 
-## Getting started
+*   Clean and standardize college names from two different data sources.
+*   Merge data to get a comprehensive view of intern distribution.
+*   Calculate the number of additional Tech Leads or Developer Interns needed per college to meet an ideal ratio.
+*   Visualize the current distribution and recommended adjustments using an interactive Sankey diagram.
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+## Files in the Repository
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+*   `intern_sankey_analyzer.py`: The main Python script for data processing and visualization.
+*   `sorted_affiliations_desc.csv`: CSV file containing counts of Tech Lead interns per affiliation.
+*   `dev intern.csv`: CSV file containing counts of Developer interns per institute.
+*   `.gitignore`: Specifies intentionally untracked files that Git should ignore.
+*   `README.md`: This file.
 
-## Add your files
+## Prerequisites
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
+Before you can run this project, you need the following installed on your system:
 
-```
-cd existing_repo
-git remote add origin https://code.swecha.org/soai2025/techleads/sankey_visualization.git
-git branch -M main
-git push -uf origin main
-```
+1.  **Python 3:** Version 3.7 or higher is recommended. You can download it from [python.org](https://www.python.org/downloads/).
+2.  **pip:** Python's package installer (usually comes with Python).
+3.  **Git:** For cloning the repository (if you haven't already).
 
-## Integrate with your tools
+## Setup and Installation
 
-- [ ] [Set up project integrations](https://code.swecha.org/soai2025/techleads/sankey_visualization/-/settings/integrations)
+1.  **Clone the repository (if you haven't already):**
+    ```bash
+    git clone https://code.swecha.org/soai2025/techleads/sankey_visualization.git
+    cd sankey_visualization
+    ```
 
-## Collaborate with your team
+2.  **Create and activate a Python virtual environment (Recommended):**
+    This keeps project dependencies isolated.
+    ```bash
+    # Navigate into the project directory if you're not already there
+    # cd sankey_visualization 
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+    # Create a virtual environment (e.g., named 'myenv')
+    python3 -m venv myenv
 
-## Test and Deploy
+    # Activate the virtual environment
+    # On Linux/macOS:
+    source myenv/bin/activate
+    # On Windows (Git Bash or WSL):
+    # source myenv/Scripts/activate
+    # On Windows (Command Prompt/PowerShell):
+    # .\myenv\Scripts\activate
+    ```
+    You should see `(myenv)` at the beginning of your terminal prompt.
 
-Use the built-in continuous integration in GitLab.
+3.  **Install required Python packages:**
+    Make sure your virtual environment is active.
+    ```bash
+    pip install pandas numpy plotly
+    ```
+    *   `pandas`: For data manipulation and reading CSV files.
+    *   `numpy`: For numerical operations (a dependency for pandas).
+    *   `plotly`: For creating the interactive Sankey diagram.
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+4.  **System Dependencies (Linux - Debian/Ubuntu based):**
+    If you encounter import errors related to `libstdc++.so.6` when running the script (especially for `numpy`), you might need to ensure the C++ standard library is installed:
+    ```bash
+    sudo apt update
+    sudo apt install libstdc++6
+    ```
+    After installing system libraries, it's a good idea to reinstall the Python packages within your activated virtual environment:
+    ```bash
+    pip uninstall numpy pandas -y
+    pip install numpy pandas plotly
+    ```
 
-***
+## Running the Script
 
-# Editing this README
+Once the setup is complete and your virtual environment is active:
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+1.  **Navigate to the project directory** (e.g., `sankey_visualization`).
+2.  **Run the Python script:**
+    ```bash
+    python intern_sankey_analyzer.py
+    ```
 
-## Suggestions for a good README
+## Expected Output
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+*   **Terminal Output:**
+    *   Tables showing colleges present in both lists and their current intern counts.
+    *   Lists of colleges primarily needing Developers or Tech Leads.
+    *   Summary statistics of total interns and recommended additions.
+*   **Sankey Diagram:**
+    *   An interactive Sankey diagram will automatically open in your default web browser.
+    *   This diagram visualizes:
+        *   The flow of existing Tech Leads and Developer Interns to colleges.
+        *   The recommended number of additional interns (Developers in blue, Tech Leads in green) needed by each college to meet the ideal ratio (currently 1 Tech Lead per 20 Developers).
+    *   You can hover over nodes and links in the diagram to see exact counts.
 
-## Name
-Choose a self-explaining name for your project.
+## Customization
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+*   **Ideal Intern Ratio:** The ideal ratio of Developer Interns per Tech Lead is set by the `IDEAL_DEV_PER_LEAD` variable within the `intern_sankey_analyzer.py` script (currently set to `20`). You can modify this value and rerun the script to see different scenarios.
+*   **Data Files:** The script reads data from `sorted_affiliations_desc.csv` and `dev intern.csv`. If you have updated data, replace these files (ensure the column names match the script's expectations: "Affiliation (College/Company/Organization Name)" and "Count" for tech leads; "Institute Name" and "Registrations" for developers).
+*   **College Name Cleaning:** The `clean_college_name` function in the script handles standardization. If you find new variations in college names, you might need to add more cleaning rules to this function.
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+## Troubleshooting
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+*   **`ImportError: ... numpy ... libstdc++.so.6`:** See Step 4 in "Setup and Installation" regarding system dependencies on Linux.
+*   **`fatal: not a git repository`:** Ensure you have run `git init` in your project directory if you are setting it up manually, or that you have successfully cloned the repository.
+*   **File Not Found Errors for CSVs:** Make sure the script `intern_sankey_analyzer.py` and the CSV files (`sorted_affiliations_desc.csv`, `dev intern.csv`) are in the same directory when you run the script.
+*   **Sankey Diagram Not Opening:** Check your terminal for any error messages from Plotly. Ensure you have a default web browser configured.
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
-
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
-
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
-
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
-
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
