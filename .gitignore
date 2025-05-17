@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+myenv/
+myenv_old_3.12/ # If you still have this backup
+
+# IDE / Editor specific
+.vscode/
+.idea/
+*.swp
+*~
