@@ -4,11 +4,12 @@ import re
 import plotly.graph_objects as go
 from io import StringIO
 
-# --- Helper function for cleaning college names (consistent with previous) ---
+# --- Helper function for cleaning college names (consistent) ---
 def clean_college_name(name):
+    original_name_for_debugging = name
     name = str(name).upper().strip()
-    name = re.sub(r'\s*\(.*?\)\s*$', '', name) # Removes content in parentheses
-    name = re.sub(r'\s*\*.+$', '', name)     # Removes " *" and anything after
+    name = re.sub(r'\s*\(.*?\)\s*$', '', name)
+    name = re.sub(r'\s*\*.+$', '', name)
     if ' - ' in name:
         name = name.split(' - ', 1)[1]
 
@@ -21,37 +22,42 @@ def clean_college_name(name):
     name = name.replace("SCI", "SCIENCE")
     name = name.replace("COLL", "COLLEGE")
     name = name.replace("COLLEGEEGE", "COLLEGE")
-    name = name.replace("GEETANJALI", "GEETHANJALI") # Standardize
+    name = name.replace("GEETANJALI", "GEETHANJALI")
 
-    # Normalize Malla Reddy variations (simplified for this example, expand if needed)
     if "MALLA REDDY" in name or "MALLAREDDY" in name:
-        if "FOR WOMEN" in name or "WOMENS" in name:
-            if "MANAGEMENT SCIENCES" not in name:
-                 name = "MALLA REDDY COLLEGE OF ENGINEERING FOR WOMEN"
-        elif "COLLEGE OF ENGINEERING AND MANAGEMENT SCIENCES" in name:
+        is_mrew = "FOR WOMEN" in name or "WOMENS" in name
+        is_mrem = "MANAGEMENT SCIENCES" in name
+        is_mrit = "INSTITUTE OF TECHNOLOGY AND SCIENCE" in name or "INST OF TECHNOLOGY AND SCI" in name
+        is_mru = "UNIVERSITY" in name
+        is_mrcet = "COLLEGE OF ENGG TECHNOLOGY" in name
+        is_mrec_base_sorted = "MALLAREDDY ENGINEERING COLLEGE" == name and "AUTONOMOUS" not in name
+        is_mriet = "MALLAREDDY INST OF ENGG AND TECHNOLOGY" == name
+        is_mrit_short = "MALLA REDDY INSTITUTE OF TECHNOLOGY" == name
+
+        if is_mrew and not is_mrem:
+            name = "MALLA REDDY COLLEGE OF ENGINEERING FOR WOMEN"
+        elif is_mrem:
             name = "MALLA REDDY ENGINEERING COLLEGE AND MANAGEMENT SCIENCES"
-        elif "INSTITUTE OF TECHNOLOGY AND SCIENCE" in name or "INST OF TECHNOLOGY AND SCI" in name :
-             name = "MALLAREDDY INSTITUTE OF TECHNOLOGY AND SCIENCE"
-        elif "UNIVERSITY" in name:
+        elif is_mrit:
+            name = "MALLAREDDY INSTITUTE OF TECHNOLOGY AND SCIENCE"
+        elif is_mru:
             name = "MALLA REDDY UNIVERSITY"
-        elif "MALLA REDDY COLLEGE OF ENGG TECHNOLOGY" in name:
+        elif is_mrcet:
             name = "MALLA REDDY COLLEGE OF ENGINEERING TECHNOLOGY"
-        elif "MALLAREDDY ENGINEERING COLLEGE" == name and "AUTONOMOUS" not in name:
-            name = "MALLA REDDY COLLEGE OF ENGINEERING" # Base MRCE
-        elif "MALLAREDDY INST OF ENGG AND TECHNOLOGY" == name:
-            name = "MALLAREDDY INSTITUTE OF ENGINEERING AND TECHNOLOGY"
-        elif "MALLA REDDY INSTITUTE OF TECHNOLOGY" == name:
+        elif is_mriet:
+             name = "MALLAREDDY INSTITUTE OF ENGINEERING AND TECHNOLOGY"
+        elif is_mrit_short:
              name = "MALLAREDDY INSTITUTE OF TECHNOLOGY"
-        # Fallback for general Malla Reddy College of Engineering
-        elif "MALLA REDDY COLLEGE OF ENGINEERING" in name and not any(s in name for s in ["FOR WOMEN", "MANAGEMENT SCIENCES", "TECHNOLOGY", "UNIVERSITY", "INSTITUTE"]):
-            name = "Malla Reddy College of Engineering".upper()
-
-
+        elif is_mrec_base_sorted:
+            name = "MALLA REDDY COLLEGE OF ENGINEERING"
+        elif "MALLA REDDY COLLEGE OF ENGINEERING" in name and not any([is_mrew, is_mrem, is_mrcet, is_mru]):
+             name = "MALLA REDDY COLLEGE OF ENGINEERING"
     name = name.replace(" FOR WOMEN", " FOR WOMEN")
     name = name.rstrip(',.')
-    return name.strip()
+    cleaned = name.strip()
+    return cleaned
 
-# --- Load Data (from provided CSV strings) ---
+# --- Load Data ---
 tech_leads_data_csv = """Affiliation (College/Company/Organization Name),Count
 SNIS - SREENIDHI INSTITUTE OF SCI AND TECHNOLOGY,85
 GCTC - GEETHANJALI COLLEGE OF ENGG AND TECHNOLOGY (AUTONOMOUS),41
@@ -207,109 +213,151 @@ df_merged.fillna(0, inplace=True)
 df_merged['Developers'] = df_merged['Developers'].astype(int)
 df_merged['Tech_Leads'] = df_merged['Tech_Leads'].astype(int)
 
-# Filter out non-college entries and those with no interns at all
-df_merged = df_merged[~df_merged['Cleaned_Name'].isin(["NEXTWAVE", "NIAT"])]
+df_merged = df_merged[~df_merged['Cleaned_Name'].isin(["NEXTWAVE", "NIAT", "VIT", "KLH", "KUWL"])]
+# Keep colleges even if one count is zero, as the link value will handle it
 df_merged = df_merged[(df_merged['Developers'] > 0) | (df_merged['Tech_Leads'] > 0)].copy()
 
-# CRITICAL: Sort by Developers descending. This order determines the vertical position of college nodes.
+
+# --- Determine Link Color Based on Imbalance ---
+IDEAL_DEVS_PER_TL = 20
+df_merged['Link_Color'] = 'rgba(128, 128, 128, 0.7)' # Default Grey
+df_merged['Imbalance_Status'] = 'Balanced or N/A'
+
+for index, row in df_merged.iterrows():
+    devs = row['Developers']
+    tls = row['Tech_Leads']
+
+    needs_tls = False
+    needs_devs = False
+
+    if devs > 0: # Check if TLs are needed for existing devs
+        ideal_tls_for_devs = np.ceil(devs / IDEAL_DEVS_PER_TL)
+        if tls < ideal_tls_for_devs:
+            needs_tls = True
+
+    if tls > 0: # Check if Devs are needed for existing TLs
+        ideal_devs_for_tls = tls * IDEAL_DEVS_PER_TL
+        if devs < ideal_devs_for_tls:
+            needs_devs = True
+    
+    # Assign color based on the primary imbalance
+    # If needs TLs (RED condition for link: Devs exist, not enough TLs)
+    if needs_tls and not needs_devs: # Clearly needs TLs
+        df_merged.loc[index, 'Link_Color'] = 'rgba(255, 0, 0, 0.7)'  # Red
+        df_merged.loc[index, 'Imbalance_Status'] = 'Needs Tech Leads (Red Link)'
+    elif needs_devs and not needs_tls: # Clearly needs Devs
+        df_merged.loc[index, 'Link_Color'] = 'rgba(0, 0, 255, 0.7)'  # Blue
+        df_merged.loc[index, 'Imbalance_Status'] = 'Needs Developers (Blue Link)'
+    elif needs_tls and needs_devs: # Both are low, e.g. 1 TL, 1 Dev. What's the priority?
+        # Let's say if it needs TLs, that's a more critical shortage to show.
+        df_merged.loc[index, 'Link_Color'] = 'rgba(255, 0, 0, 0.7)'  # Red (prioritize needing TLs)
+        df_merged.loc[index, 'Imbalance_Status'] = 'Critically Low: Needs TLs & Devs (Red Link)'
+    elif devs == 0 and tls > 0: # Has TLs, 0 Devs --> Needs Devs
+        df_merged.loc[index, 'Link_Color'] = 'rgba(0, 0, 255, 0.7)'  # Blue
+        df_merged.loc[index, 'Imbalance_Status'] = 'Needs Developers (Blue Link)'
+    elif tls == 0 and devs > 0: # Has Devs, 0 TLs --> Needs TLs
+        df_merged.loc[index, 'Link_Color'] = 'rgba(255, 0, 0, 0.7)'  # Red
+        df_merged.loc[index, 'Imbalance_Status'] = 'Needs Tech Leads (Red Link)'
+
+
+# Sort colleges by Developer count for vertical ordering on both sides
 df_merged.sort_values(by='Developers', ascending=False, inplace=True)
-df_merged.reset_index(drop=True, inplace=True) # Reset index after sorting
+df_merged.reset_index(drop=True, inplace=True)
 
+# --- Prepare for Sankey Visualization ---
+# We need two sets of nodes for colleges: one for Dev side, one for TL side
+# Their labels will be the same (college name), but their indices will be different.
+college_names_sorted = list(df_merged['Cleaned_Name'])
 
-# --- Prepare for Sankey Visualization (Slope Chart Style) ---
+node_labels_dev_side = [f"{name}_Dev" for name in college_names_sorted]
+node_labels_tl_side = [f"{name}_TL" for name in college_names_sorted]
 
-node_label_dev_category = "Developer Interns (by College)"
-node_label_tl_category = "Tech Lead Interns (by College)"
-
-# College names *from the sorted dataframe* will form the middle nodes
-# Their order in node_labels list dictates their vertical position in the Sankey
-college_node_labels = list(df_merged['Cleaned_Name'])
-
-# Construct the full list of node labels in the desired order for Sankey columns
-node_labels = [node_label_dev_category] + college_node_labels + [node_label_tl_category]
-node_dict = {label: i for i, label in enumerate(node_labels)}
+# All unique node labels for the Sankey
+sankey_node_labels = node_labels_dev_side + node_labels_tl_side
+sankey_node_dict = {label: i for i, label in enumerate(sankey_node_labels)}
 
 source_indices = []
 target_indices = []
-values = []
+values = [] # The value of the link will be the sum of Devs + TLs for thickness, or just 1 if only connection
 link_colors_sankey = []
 link_hover_texts = []
 
-# Generate distinct colors for each college path
-import plotly.colors
-# Combine palettes for more unique colors if many colleges
-color_palette = plotly.colors.qualitative.Plotly + plotly.colors.qualitative.Alphabet + plotly.colors.qualitative.Light24
-college_color_map = {
-    name: color_palette[i % len(color_palette)]
-    for i, name in enumerate(df_merged['Cleaned_Name']) # Use order from sorted df_merged
-}
+# Node colors: all college nodes can be a neutral color, link color shows imbalance
+node_color_dev_side = 'rgba(200, 220, 255, 0.8)' # Light blue for dev side nodes
+node_color_tl_side = 'rgba(255, 220, 200, 0.8)' # Light orange for TL side nodes
 
-# Create links
+sankey_node_colors = [node_color_dev_side] * len(node_labels_dev_side) + \
+                     [node_color_tl_side] * len(node_labels_tl_side)
+
+
+# Create Links
 for index, row in df_merged.iterrows():
     college_name = row['Cleaned_Name']
     dev_count = row['Developers']
     tl_count = row['Tech_Leads']
-    college_sankey_color = college_color_map.get(college_name, 'rgba(200,200,200,0.7)') # Default color
+    link_color = row['Link_Color']
+    status_text = row['Imbalance_Status']
 
-    # Flow 1: From "Developer Interns Category" node to the College node
-    if dev_count > 0: # Only create a link if there's a value
-        source_indices.append(node_dict[node_label_dev_category])
-        target_indices.append(node_dict[college_name]) # Target is the college node itself
-        values.append(dev_count)
-        link_colors_sankey.append(college_sankey_color)
-        link_hover_texts.append(f"{college_name}<br>{dev_count} Developers")
+    source_node_label = f"{college_name}_Dev"
+    target_node_label = f"{college_name}_TL"
 
-    # Flow 2: From the College node to "Tech Lead Interns Category" node
-    if tl_count > 0: # Only create a link if there's a value
-        source_indices.append(node_dict[college_name]) # Source is the college node itself
-        target_indices.append(node_dict[node_label_tl_category])
-        values.append(tl_count)
-        link_colors_sankey.append(college_sankey_color) # Use the same color for the college's path
-        link_hover_texts.append(f"{college_name}<br>{tl_count} Tech Leads")
+    # The value of the link can be based on total interns, or a fixed value for visibility
+    # Using total interns can make links for colleges with 0 on one side look odd.
+    # Let's use a combination: if one is 0, use the other. If both >0, use sum.
+    # Or, for this visual, the link value *should* represent the flow from devs to TLs for that college.
+    # What does the link *value* represent?
+    # If it's just a connection, value=1. If it represents total interns, value = dev+tl
+    # The thickness of the link should ideally represent the number of *students* at that college.
+    # However, the color is key here.
+    # Let's make the link value the max of Devs or TLs to give some thickness, or 1 if both are 0 (filtered out)
+    link_value = max(1, dev_count, tl_count) # Ensure a minimum thickness for visibility if counts are low
 
+    source_indices.append(sankey_node_dict[source_node_label])
+    target_indices.append(sankey_node_dict[target_node_label])
+    values.append(link_value)
+    link_colors_sankey.append(link_color)
+    link_hover_texts.append(f"{college_name}<br>Devs: {dev_count}, TLs: {tl_count}<br>Status: {status_text}")
 
-# Node Colors: Category nodes different, college nodes use their path color
-sankey_node_colors_list = []
-for label in node_labels:
-    if label == node_label_dev_category:
-        sankey_node_colors_list.append('rgba(31, 119, 180, 0.9)') # Blue
-    elif label == node_label_tl_category:
-        sankey_node_colors_list.append('rgba(255, 127, 14, 0.9)') # Orange
-    else: # College node
-        sankey_node_colors_list.append(college_color_map.get(label, 'rgba(220,220,220,0.8)')) # College's specific path color
 
 # --- Create Sankey Diagram ---
-if not source_indices: # Check if there are any links to draw
-    print("No data to plot for Sankey diagram. Check data and filtering.")
+if not source_indices:
+    print("No data to plot for Sankey diagram.")
 else:
     fig = go.Figure(data=[go.Sankey(
-        arrangement="snap", # "snap", "perpendicular", "freeform"
+        arrangement="perpendicular", # "snap", "perpendicular", "freeform", "fixed"
         node=dict(
-            pad=15, # Padding between nodes
-            thickness=20, # Thickness of nodes
+            pad=15, # Padding between nodes in the same column
+            thickness=15,
             line=dict(color="black", width=0.5),
-            label=node_labels,
-            color=sankey_node_colors_list, # Apply node colors
-            hovertemplate='%{label}<extra></extra>' # Simple hover for nodes
+            label=[name.replace("_Dev", "").replace("_TL", "") for name in sankey_node_labels], # Show clean names
+            color=sankey_node_colors, # Nodes are neutral, links show status
+            customdata=sankey_node_labels, # Store original suffixed labels for hover if needed
+            hovertemplate='College: %{customdata}<extra></extra>' # Or show clean name: %{label}
         ),
         link=dict(
             source=source_indices,
             target=target_indices,
             value=values,
-            color=link_colors_sankey, # Color links by college path
-            label=link_hover_texts, # Custom hover text for links
-            hovertemplate='%{label}<extra></extra>' # Display only our custom label
+            color=link_colors_sankey, # CRITICAL: Link color shows imbalance
+            label=link_hover_texts,
+            hovertemplate='%{label}<extra></extra>'
         )
     )])
 
     fig.update_layout(
-        title_text="College Intern Comparison: Developers vs. Tech Leads (Sankey Style)",
+        title_text="College Intern Imbalance: Developers vs. Tech Leads (1 TL : 20 Devs Ratio)<br>Red Link: Needs TLs | Blue Link: Needs Devs",
         font_size=10,
-        height=max(600, len(df_merged) * 22), # Dynamic height based on number of colleges
-        margin=dict(l=150, r=150, t=60, b=50) # Adjust margins if labels are cut off
+        height=max(700, len(df_merged) * 22 + 150), # Dynamic height
+        # To place labels on left and right, we might need to adjust margins and axis settings.
+        # For pure Sankey, the nodes themselves are the columns.
+        xaxis=dict(showticklabels=False), # Hide x-axis ticks for cleaner look
+        yaxis=dict(showticklabels=False), # Hide y-axis ticks
+        margin=dict(l=200, r=200, t=100, b=50) # Ample margin for college names
     )
+    # Add annotations for column headers if desired (more complex for dynamic Sankey)
+    # For now, the title conveys the left/right meaning.
+
     fig.show()
 
-print("\n--- Data for Sankey (Sorted by Developer Interns) ---")
-# Display a few columns to verify order and data
-print(df_merged[['Cleaned_Name', 'Developers', 'Tech_Leads']].head(20))
+print("\n--- College Imbalance Status (Sorted by Developer Count) ---")
+print(df_merged[['Cleaned_Name', 'Developers', 'Tech_Leads', 'Imbalance_Status', 'Link_Color']].head(30))
