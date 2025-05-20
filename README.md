@@ -16,7 +16,7 @@ This Streamlit application visualizes the balance (or imbalance) between the num
     *   Links between the same college on both sides are colored to indicate imbalance:
         *   **Red Link:** College primarily needs Tech Leads.
         *   **Blue Link:** College primarily needs AI Dev Interns.
-        *   **Grey Link:** College is relatively balanced or has other non-critical status.
+        
     *   The ideal ratio used for this calculation is 1 Tech Lead : 20 AI Dev Interns.
 *   **Data-Driven Insights:** Helps identify colleges that are strong sources for one role versus the other, or where recruitment efforts might need to be balanced.
 *   **Underlying Data View:** An expandable section allows users to see the processed data table.
